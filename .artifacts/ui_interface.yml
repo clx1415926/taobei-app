@@ -1,0 +1,52 @@
+- type: Frontend
+  id: UI-LoginPage
+  description: 用户登录页面，包含完整的登录流程和界面元素。
+  properties:
+    - name: onLoginSuccess
+      type: function
+      description: "登录成功后的回调函数，用于页面跳转。"
+    - name: onNavigateToRegister
+      type: function
+      description: "导航到注册页面的回调函数。"
+  state:
+    - phoneNumber
+    - verificationCode
+    - error
+    - isLoading
+    - countdown
+    - canSendCode
+  dependencies:
+    - API-POST-SendVerificationCode
+    - API-POST-Login
+  acceptanceCriteria:
+    - 页面包含手机号输入框、验证码输入框、获取验证码按钮和登录按钮。
+    - 手机号格式验证在前端完成，格式错误时显示提示信息。
+    - 获取验证码按钮点击后进入60秒倒计时状态且不可点击。
+    - 登录过程中显示加载状态，按钮禁用。
+    - 根据API返回的错误信息显示相应的用户提示。
+    - 登录成功后显示成功提示并自动跳转到首页。
+  changeLog:
+    - date: "2025-10-13"
+      description: "初始创建。"
+
+- type: Frontend
+  id: UI-LoginButton
+  description: 首页的登录入口按钮，显示"亲，请登录"文本。
+  properties:
+    - name: onClick
+      type: function
+      description: "点击按钮时的回调函数，用于导航到登录页面。"
+    - name: className
+      type: string
+      description: "自定义CSS类名。"
+  state:
+    - none
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 按钮显示"亲，请登录"文本。
+    - 点击按钮时触发导航到登录页面。
+    - 支持自定义样式。
+  changeLog:
+    - date: "2025-10-13"
+      description: "初始创建。"
