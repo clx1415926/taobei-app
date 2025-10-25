@@ -1,0 +1,284 @@
+# 淘贝购物网站 - 前端UI组件接口库
+# 生成时间: 2025-10-24
+
+- type: Frontend
+  id: UI-Homepage
+  description: 淘贝购物网站首页主组件，包含完整的首页布局和功能
+  properties:
+    - name: userInfo
+      type: object
+      description: "用户登录信息，null表示未登录"
+  state:
+    - isLoading
+    - hotProducts
+    - categories
+    - searchKeyword
+    - error
+  dependencies:
+    - API-GET-Homepage
+    - UI-Header
+    - UI-ProductGrid
+    - UI-CategoryNav
+  acceptanceCriteria:
+    - 页面加载时自动获取首页数据
+    - 根据用户登录状态显示不同的头部内容
+    - 展示热门商品网格和分类导航
+    - 页面加载时间不超过3秒
+    - 支持移动端响应式布局
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-Header
+  description: 网站头部组件，包含Logo、搜索框、用户状态显示
+  properties:
+    - name: userInfo
+      type: object
+      description: "用户信息对象"
+    - name: onSearch
+      type: function
+      description: "搜索回调函数"
+    - name: onLoginClick
+      type: function
+      description: "登录按钮点击回调"
+    - name: onRegisterClick
+      type: function
+      description: "注册按钮点击回调"
+  state:
+    - searchValue
+    - isSearching
+  dependencies:
+    - API-GET-SearchProducts
+  acceptanceCriteria:
+    - 显示淘贝Logo和网站标识
+    - 搜索框支持关键词输入和搜索
+    - 未登录时显示"亲，请登录"和"免费注册"按钮
+    - 已登录时显示用户信息和操作菜单
+    - 支持键盘导航和无障碍访问
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-LoginForm
+  description: 用户登录表单组件，处理用户登录流程
+  properties:
+    - name: onLoginSuccess
+      type: function
+      description: "登录成功后的回调函数"
+    - name: onSwitchToRegister
+      type: function
+      description: "切换到注册页面的回调"
+  state:
+    - phoneNumber
+    - verificationCode
+    - isLoading
+    - countdown
+    - error
+    - canGetCode
+  dependencies:
+    - API-POST-SendVerificationCode
+    - API-POST-Login
+  acceptanceCriteria:
+    - 包含手机号输入框、验证码输入框、获取验证码按钮、登录按钮
+    - 手机号格式验证和自动格式化显示
+    - 验证码获取倒计时功能（60秒）
+    - 表单验证和错误提示显示
+    - 登录过程中显示加载状态
+    - 支持键盘操作和无障碍访问
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-RegisterForm
+  description: 用户注册表单组件，处理用户注册流程
+  properties:
+    - name: onRegisterSuccess
+      type: function
+      description: "注册成功后的回调函数"
+    - name: onSwitchToLogin
+      type: function
+      description: "切换到登录页面的回调"
+  state:
+    - phoneNumber
+    - verificationCode
+    - agreeToTerms
+    - isLoading
+    - countdown
+    - error
+    - canGetCode
+    - canSubmit
+  dependencies:
+    - API-POST-SendVerificationCode
+    - API-POST-Register
+  acceptanceCriteria:
+    - 包含手机号输入框、验证码输入框、获取验证码按钮、用户协议勾选框、注册按钮
+    - 手机号格式验证和自动格式化
+    - 验证码获取倒计时功能
+    - 用户协议勾选状态控制注册按钮可用性
+    - 用户协议链接可点击查看详情
+    - 注册过程中显示加载状态
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-ProductGrid
+  description: 商品网格展示组件，用于显示商品列表
+  properties:
+    - name: products
+      type: array
+      description: "商品数据数组"
+    - name: loading
+      type: boolean
+      description: "加载状态"
+    - name: onProductClick
+      type: function
+      description: "商品点击回调函数"
+  state:
+    - imageLoadErrors
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 以网格形式展示商品列表
+    - 每个商品显示图片、标题、价格、销量信息
+    - 支持商品图片懒加载
+    - 图片加载失败时显示默认占位图
+    - 支持响应式布局，移动端自适应
+    - 商品卡片支持点击查看详情
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-CategoryNav
+  description: 商品分类导航组件
+  properties:
+    - name: categories
+      type: array
+      description: "分类数据数组"
+    - name: onCategoryClick
+      type: function
+      description: "分类点击回调函数"
+  state:
+    - activeCategory
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 水平展示商品分类列表
+    - 支持分类图标和名称显示
+    - 分类项支持点击跳转
+    - 当前选中分类有视觉高亮
+    - 移动端支持横向滚动
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-SearchResults
+  description: 搜索结果页面组件
+  properties:
+    - name: keyword
+      type: string
+      description: "搜索关键词"
+    - name: onBackToHome
+      type: function
+      description: "返回首页回调"
+  state:
+    - products
+    - isLoading
+    - currentPage
+    - totalPages
+    - sortBy
+    - error
+  dependencies:
+    - API-GET-SearchProducts
+    - UI-ProductGrid
+  acceptanceCriteria:
+    - 显示搜索关键词和结果统计
+    - 展示搜索到的商品列表
+    - 支持分页浏览
+    - 支持排序选择（相关度、价格、销量）
+    - 无搜索结果时显示友好提示
+    - 提供返回首页的导航
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-UserAgreement
+  description: 用户协议弹窗组件
+  properties:
+    - name: visible
+      type: boolean
+      description: "弹窗显示状态"
+    - name: onClose
+      type: function
+      description: "关闭弹窗回调"
+    - name: onAgree
+      type: function
+      description: "同意协议回调"
+  state:
+    - scrollPosition
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 以弹窗或新窗口形式显示用户协议内容
+    - 支持协议内容滚动浏览
+    - 提供同意和关闭操作按钮
+    - 支持ESC键关闭弹窗
+    - 协议内容可滚动且格式清晰
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-LoadingSpinner
+  description: 通用加载状态组件
+  properties:
+    - name: size
+      type: string
+      description: "加载图标大小：small, medium, large"
+    - name: text
+      type: string
+      description: "加载提示文字"
+  state:
+    - none
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 显示旋转的加载图标
+    - 支持不同尺寸规格
+    - 可配置加载提示文字
+    - 支持无障碍访问属性
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-ErrorMessage
+  description: 错误信息显示组件
+  properties:
+    - name: message
+      type: string
+      description: "错误信息内容"
+    - name: type
+      type: string
+      description: "错误类型：error, warning, info"
+    - name: onClose
+      type: function
+      description: "关闭错误提示回调"
+  state:
+    - visible
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 根据错误类型显示不同样式的提示
+    - 支持自动消失或手动关闭
+    - 错误信息清晰易懂
+    - 支持屏幕阅读器访问
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
