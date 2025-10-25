@@ -1,6 +1,50 @@
-import { ApiResponse, HomepageData, SearchResult, User } from '../types';
+import { ApiResponse, AuthResponse, HomepageData, SearchResult, User } from '../types';
 
 const API_BASE_URL = '/api';
+
+// 认证请求函数（返回直接的响应格式，不包装在ApiResponse中）
+async function authRequest<T>(url: string, options: RequestInit = {}): Promise<T> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    });
+
+    // 检查响应是否为空或者不是JSON格式
+    const contentType = response.headers.get('content-type');
+    let data: any;
+    
+    if (contentType && contentType.includes('application/json')) {
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // 如果JSON解析失败，创建一个错误对象
+        throw new Error('Invalid JSON response from server');
+      }
+    } else {
+      // 如果不是JSON响应，尝试获取文本内容
+      const text = await response.text();
+      throw new Error(text || 'Non-JSON response from server');
+    }
+    
+    if (!response.ok) {
+      // 特殊处理409状态码（用户已存在）- 返回数据而不是抛出错误
+      if (response.status === 409 && data.token) {
+        // 如果409响应包含token，说明是自动登录，返回成功响应
+        return data;
+      }
+      throw new Error(data.error || `Request failed with status ${response.status}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Auth request failed:', error);
+    throw error;
+  }
+}
 
 // 通用请求函数
 async function request<T>(url: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
@@ -60,8 +104,8 @@ export const authApi = {
   },
 
   // 用户登录
-  login: async (phoneNumber: string, verificationCode: string): Promise<ApiResponse<{ token: string; user: User }>> => {
-    const response = await request<{ token: string; user: User }>('/auth/login', {
+  login: async (phoneNumber: string, verificationCode: string): Promise<AuthResponse> => {
+    const response = await authRequest<AuthResponse>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ phoneNumber, verificationCode }),
     });
@@ -75,8 +119,8 @@ export const authApi = {
   },
 
   // 用户注册
-  register: async (phoneNumber: string, verificationCode: string, agreeToTerms: boolean = true): Promise<ApiResponse<{ token: string; user: User }>> => {
-    const response = await request<{ token: string; user: User }>('/auth/register', {
+  register: async (phoneNumber: string, verificationCode: string, agreeToTerms: boolean): Promise<AuthResponse> => {
+    const response = await authRequest<AuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({ phoneNumber, verificationCode, agreeToTerms }),
     });

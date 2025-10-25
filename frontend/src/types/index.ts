@@ -30,6 +30,14 @@ export interface ApiResponse<T = any> {
   data?: T;
 }
 
+// 认证相关的响应类型（直接包含token等字段，不包装在data中）
+export interface AuthResponse {
+  token: string;
+  userId: string;
+  message: string;
+  redirectUrl?: string;
+}
+
 // 首页数据类型
 export interface HomepageData {
   hotProducts: Product[];
