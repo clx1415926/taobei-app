@@ -1,38 +1,133 @@
-- type: Database
-  id: DB-FindUserByPhone
-  description: 根据手机号查找用户记录，用于验证用户是否已注册。
-  dependencies:
-    - none
-  acceptanceCriteria:
-    - 成功查找到用户时返回用户信息。
-    - 未找到用户时返回空结果。
-    - 手机号格式验证在应用层完成。
-  changeLog:
-    - date: "2025-10-13"
-      description: "初始创建。"
+# 淘贝购物网站 - 数据库操作接口库
+# 生成时间: 2025-10-24
 
 - type: Database
-  id: DB-StoreVerificationCode
-  description: 在数据库中存储手机号对应的验证码，设置60秒有效期。
+  id: DB-CreateUser
+  description: 在数据库中创建一个新的用户记录
   dependencies:
     - none
   acceptanceCriteria:
-    - 成功存储验证码和手机号的对应关系。
-    - 验证码有效期为60秒。
-    - 如果同一手机号已有验证码，应覆盖旧的验证码。
+    - 成功执行后，users表中会增加一条新记录
+    - 如果手机号已存在，操作应失败并抛出唯一性约束错误
+    - 用户信息包含手机号（加密存储）、注册时间、来源等字段
   changeLog:
-    - date: "2025-10-13"
-      description: "初始创建。"
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-FindUserByPhone
+  description: 根据手机号查询用户信息
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 能够根据加密后的手机号查询到对应用户记录
+    - 如果用户不存在，返回空结果
+    - 查询结果包含用户ID、注册状态等基本信息
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-CreateVerificationCode
+  description: 在数据库中创建验证码记录
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 成功创建验证码记录，包含手机号、验证码（加盐哈希）、过期时间
+    - 验证码有效期为60秒
+    - 支持同一手机号的验证码覆盖更新
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
 
 - type: Database
   id: DB-VerifyCode
-  description: 验证手机号对应的验证码是否正确且未过期。
+  description: 验证手机号和验证码的匹配性及有效性
   dependencies:
     - none
   acceptanceCriteria:
-    - 验证码正确且未过期时返回验证成功。
-    - 验证码错误或已过期时返回验证失败。
-    - 验证成功后应删除或标记验证码为已使用。
+    - 验证验证码是否正确（通过哈希比对）
+    - 验证验证码是否在有效期内
+    - 验证成功后可选择性删除验证码记录
   changeLog:
-    - date: "2025-10-13"
-      description: "初始创建。"
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-GetVerificationCodeCount
+  description: 获取指定手机号当天的验证码获取次数
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 统计当天（00:00-23:59）该手机号的验证码请求次数
+    - 返回准确的计数值
+    - 支持按日期重置计数
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-RecordLoginAttempt
+  description: 记录用户登录尝试信息
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 记录IP地址、手机号、登录时间、登录结果（成功/失败）
+    - 支持按IP地址和时间范围查询登录失败次数
+    - 用于安全控制和防刷机制
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-GetProducts
+  description: 获取商品列表信息
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 支持分页查询商品信息
+    - 返回商品ID、标题、价格、销量、图片URL等信息
+    - 支持按分类、关键词筛选
+    - 支持热门商品排序
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-SearchProducts
+  description: 根据关键词搜索商品
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 支持商品标题、描述的模糊搜索
+    - 返回匹配的商品列表
+    - 支持搜索结果排序（相关度、价格、销量等）
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-GetProductCategories
+  description: 获取商品分类信息
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 返回所有商品分类列表
+    - 包含分类ID、名称、图标等信息
+    - 支持层级分类结构
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-UpdateUserLoginStatus
+  description: 更新用户登录状态和最后登录时间
+  dependencies:
+    - DB-FindUserByPhone
+  acceptanceCriteria:
+    - 更新用户的登录状态为已登录
+    - 记录最后登录时间
+    - 可选择性更新登录IP地址
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"

@@ -1,81 +1,131 @@
 const express = require('express');
-const AuthService = require('../services/AuthService');
-
+const { body, validationResult } = require('express-validator');
+const AuthService = require('../services/authService');
 const router = express.Router();
 
-// API-POST-SendVerificationCode: POST /api/auth/send-verification-code
-router.post('/send-verification-code', async (req, res) => {
+// 使用单例模式确保所有请求使用同一个AuthService实例
+let authServiceInstance = null;
+const getAuthService = () => {
+  if (!authServiceInstance) {
+    authServiceInstance = new AuthService();
+  }
+  return authServiceInstance;
+};
+
+// API-POST-SendVerificationCode
+router.post('/send-verification-code', [
+  body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('type').isIn(['login', 'register']).withMessage('类型参数无效')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: '请输入正确的手机号码' });
+  }
+
   try {
-    const { phoneNumber } = req.body;
+    const { phoneNumber, type } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
     
-    // 检查必要参数
-    if (!phoneNumber) {
-      return res.status(400).json({
-        error: '请输入正确的手机号码'
-      });
-    }
-    
-    // 调用服务层发送验证码
-    const result = await AuthService.sendVerificationCode(phoneNumber);
-    
-    if (result.success) {
-      res.status(200).json({
-        message: result.message,
-        expiresIn: 60
-      });
-    } else {
-      res.status(400).json({
-        error: result.error
-      });
-    }
+    const result = await getAuthService().sendVerificationCode(phoneNumber, type, ipAddress);
+    res.json(result);
   } catch (error) {
-    console.error('发送验证码API错误:', error);
-    res.status(500).json({
-      error: '服务器内部错误'
-    });
+    if (error.message.includes('今日获取验证码次数已达上限')) {
+      return res.status(429).json({ error: error.message });
+    }
+    if (error.message.includes('请求过于频繁')) {
+      return res.status(429).json({ error: error.message });
+    }
+    res.status(500).json({ error: '服务器内部错误' });
   }
 });
 
-// API-POST-Login: POST /api/auth/login
-router.post('/login', async (req, res) => {
+// API-POST-Login
+router.post('/login', [
+  body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('verificationCode').isLength({ min: 6, max: 6 }).withMessage('验证码格式错误')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const { phoneNumber, verificationCode } = req.body;
+    if (!phoneNumber) {
+      return res.status(400).json({ error: '请输入手机号' });
+    }
+    if (!verificationCode) {
+      return res.status(400).json({ error: '请输入验证码' });
+    }
+    return res.status(400).json({ error: '请输入正确的手机号码或验证码' });
+  }
+
   try {
     const { phoneNumber, verificationCode } = req.body;
-    
-    // 检查必要参数
-    if (!phoneNumber) {
-      return res.status(400).json({
-        error: '请输入正确的手机号码'
-      });
-    }
-    
-    if (!verificationCode) {
-      return res.status(400).json({
-        error: '请提供验证码'
-      });
-    }
-    
-    // 调用服务层进行登录
-    const result = await AuthService.login(phoneNumber, verificationCode);
-    
-    if (result.success) {
-      res.status(200).json({
-        message: result.message,
-        userId: result.user.id,
-        token: 'mock-jwt-token' // TODO: 实现真正的JWT token
-      });
-    } else {
-      // 根据错误类型返回不同的状态码
-      if (result.error.includes('未注册')) {
-        res.status(404).json({ error: result.error });
-      } else {
-        res.status(400).json({ error: result.error });
-      }
-    }
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const result = await getAuthService().login(phoneNumber, verificationCode, ipAddress);
+    res.json(result);
   } catch (error) {
-    console.error('登录API错误:', error);
-    res.status(500).json({
-      error: '服务器内部错误'
-    });
+    if (error.message.includes('该手机号未注册')) {
+      return res.status(404).json({ error: error.message, redirectUrl: '/register' });
+    }
+    if (error.message.includes('验证码错误')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('验证码已过期')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('登录失败次数过多')) {
+      return res.status(429).json({ error: error.message });
+    }
+    res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+// API-POST-Register
+router.post('/register', [
+  body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('verificationCode').isLength({ min: 6, max: 6 }).withMessage('验证码格式错误'),
+  body('agreeToTerms').isBoolean().withMessage('请同意用户协议')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    // 检查具体的验证错误类型
+    const phoneError = errors.array().find(err => err.path === 'phoneNumber');
+    if (phoneError) {
+      return res.status(400).json({ error: '请输入正确的手机号码' });
+    }
+    return res.status(400).json({ error: '请输入正确的手机号码或验证码' });
+  }
+
+  try {
+    const { phoneNumber, verificationCode, agreeToTerms } = req.body;
+    const result = await getAuthService().register(phoneNumber, verificationCode, agreeToTerms);
+    res.status(201).json(result);
+  } catch (error) {
+    if (error.isExistingUser) {
+      return res.status(409).json(error.userData);
+    }
+    if (error.message.includes('请同意用户协议')) {
+      return res.status(400).json({ error: error.message });
+    }
+    if (error.message.includes('验证码错误') || error.message.includes('验证码已过期')) {
+      return res.status(400).json({ error: '验证码已过期，请重新获取' });
+    }
+    res.status(500).json({ error: '服务器内部错误' });
+  }
+});
+
+// API-POST-Logout
+router.post('/logout', async (req, res) => {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ error: '未授权访问' });
+    }
+    await getAuthService().logout(token);
+    res.json({ message: '退出登录成功' });
+  } catch (error) {
+    if (error.message.includes('无效的token') || error.message.includes('token已过期')) {
+      return res.status(401).json({ error: '未授权访问' });
+    }
+    res.status(400).json({ error: error.message });
   }
 });
 

@@ -1,35 +1,43 @@
+# 淘贝购物网站 - 后端API接口库
+# 生成时间: 2025-10-24
+
 - type: Backend
   id: API-POST-SendVerificationCode
   route: POST /api/auth/send-verification-code
-  description: 发送验证码到指定手机号，生成6位验证码并存储到数据库。
+  description: 发送手机验证码接口，支持登录和注册场景
   input:
     type: JSON
     body:
       phoneNumber: string
+      type: string # "login" 或 "register"
   output:
     success:
       statusCode: 200
-      body: { message: "验证码已发送", expiresIn: 60 }
+      body: { message: "验证码已发送", countdown: 60 }
     error:
       - statusCode: 400
         body: { error: "请输入正确的手机号码" }
       - statusCode: 429
+        body: { error: "今日获取验证码次数已达上限，请明天再试" }
+      - statusCode: 429
         body: { error: "请求过于频繁，请稍后再试" }
   dependencies:
-    - DB-StoreVerificationCode
+    - DB-GetVerificationCodeCount
+    - DB-CreateVerificationCode
   acceptanceCriteria:
-    - 手机号格式验证通过后生成6位数字验证码。
-    - 验证码打印到控制台用于测试。
-    - 验证码存储到数据库，有效期60秒。
-    - 返回成功响应包含过期时间信息。
+    - 验证手机号格式的正确性
+    - 检查当日验证码获取次数限制（50次）
+    - 检查IP访问频率限制
+    - 生成6位数字验证码并存储到数据库
+    - 开发环境在控制台打印验证码
   changeLog:
-    - date: "2025-10-13"
-      description: "初始创建。"
+    - date: "2025-10-24"
+      description: "初始创建"
 
 - type: Backend
   id: API-POST-Login
   route: POST /api/auth/login
-  description: 处理用户登录请求，验证手机号注册状态和验证码正确性。
+  description: 用户登录接口，使用手机号和验证码进行身份验证
   input:
     type: JSON
     body:
@@ -38,22 +46,217 @@
   output:
     success:
       statusCode: 200
-      body: { message: "登录成功", userId: "uuid", token: "jwt" }
+      body: { message: "登录成功", userId: "uuid", token: "jwt", redirectUrl: "/" }
     error:
       - statusCode: 400
-        body: { error: "请输入正确的手机号码" }
-      - statusCode: 401
+        body: { error: "请输入手机号" }
+      - statusCode: 400
+        body: { error: "请输入验证码" }
+      - statusCode: 400
         body: { error: "验证码错误" }
+      - statusCode: 400
+        body: { error: "验证码已过期，请重新获取" }
       - statusCode: 404
-        body: { error: "该手机号未注册，请先完成注册" }
+        body: { error: "该手机号未注册，请先完成注册", redirectUrl: "/register" }
+      - statusCode: 429
+        body: { error: "登录失败次数过多，请15分钟后再试" }
   dependencies:
     - DB-FindUserByPhone
     - DB-VerifyCode
+    - DB-RecordLoginAttempt
+    - DB-UpdateUserLoginStatus
   acceptanceCriteria:
-    - 首先验证手机号是否已注册。
-    - 验证验证码是否正确且未过期。
-    - 登录成功后返回用户ID和认证令牌。
-    - 根据不同失败原因返回相应错误信息。
+    - 验证手机号和验证码的有效性
+    - 检查用户是否已注册
+    - 记录登录尝试信息
+    - 实施IP登录失败次数限制
+    - 成功登录后生成JWT token
   changeLog:
-    - date: "2025-10-13"
-      description: "初始创建。"
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-POST-Register
+  route: POST /api/auth/register
+  description: 用户注册接口，创建新用户账户
+  input:
+    type: JSON
+    body:
+      phoneNumber: string
+      verificationCode: string
+      agreeToTerms: boolean
+  output:
+    success:
+      statusCode: 201
+      body: { message: "注册成功", userId: "uuid", token: "jwt", redirectUrl: "/" }
+    error:
+      - statusCode: 400
+        body: { error: "请输入正确的手机号码" }
+      - statusCode: 400
+        body: { error: "请输入验证码" }
+      - statusCode: 400
+        body: { error: "验证码错误" }
+      - statusCode: 400
+        body: { error: "验证码已过期，请重新获取" }
+      - statusCode: 400
+        body: { error: "请同意用户协议" }
+      - statusCode: 409
+        body: { message: "该手机号已注册，将直接为您登录", userId: "uuid", token: "jwt", redirectUrl: "/" }
+  dependencies:
+    - DB-FindUserByPhone
+    - DB-VerifyCode
+    - DB-CreateUser
+    - DB-UpdateUserLoginStatus
+  acceptanceCriteria:
+    - 验证所有必填字段的完整性
+    - 验证用户协议同意状态
+    - 检查手机号是否已注册
+    - 如果已注册则直接登录
+    - 创建新用户并自动登录
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-GET-Homepage
+  route: GET /api/homepage
+  description: 获取首页数据，包括热门商品和分类信息
+  input:
+    type: Query
+    params:
+      limit: number # 可选，默认8个商品
+  output:
+    success:
+      statusCode: 200
+      body: 
+        hotProducts: array
+        categories: array
+        userInfo: object # 如果已登录
+    error:
+      - statusCode: 500
+        body: { error: "服务暂时不可用，请稍后重试" }
+  dependencies:
+    - DB-GetProducts
+    - DB-GetProductCategories
+  acceptanceCriteria:
+    - 返回热门商品列表（至少8个）
+    - 返回商品分类信息
+    - 如果用户已登录，返回用户基本信息
+    - 支持商品图片懒加载URL
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-GET-SearchProducts
+  route: GET /api/products/search
+  description: 商品搜索接口
+  input:
+    type: Query
+    params:
+      keyword: string
+      page: number # 可选，默认1
+      limit: number # 可选，默认20
+      sortBy: string # 可选：relevance, price, sales
+  output:
+    success:
+      statusCode: 200
+      body:
+        products: array
+        total: number
+        page: number
+        totalPages: number
+    error:
+      - statusCode: 400
+        body: { error: "请输入搜索关键词" }
+      - statusCode: 500
+        body: { error: "搜索服务暂时不可用" }
+  dependencies:
+    - DB-SearchProducts
+  acceptanceCriteria:
+    - 支持关键词模糊搜索
+    - 支持分页查询
+    - 支持多种排序方式
+    - 返回搜索结果统计信息
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-GET-ProductCategories
+  route: GET /api/categories
+  description: 获取商品分类列表
+  input:
+    type: Query
+    params: {}
+  output:
+    success:
+      statusCode: 200
+      body:
+        categories: array
+    error:
+      - statusCode: 500
+        body: { error: "服务暂时不可用，请稍后重试" }
+  dependencies:
+    - DB-GetProductCategories
+  acceptanceCriteria:
+    - 返回所有可用的商品分类
+    - 包含分类ID、名称、图标等信息
+    - 支持层级分类结构
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-POST-Logout
+  route: POST /api/auth/logout
+  description: 用户退出登录接口
+  input:
+    type: JSON
+    headers:
+      Authorization: "Bearer {token}"
+  output:
+    success:
+      statusCode: 200
+      body: { message: "退出登录成功" }
+    error:
+      - statusCode: 401
+        body: { error: "未授权访问" }
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 验证用户登录状态
+    - 清除服务端session信息
+    - 返回退出成功确认
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-GET-UserProfile
+  route: GET /api/user/profile
+  description: 获取用户个人信息
+  input:
+    type: Query
+    headers:
+      Authorization: "Bearer {token}"
+  output:
+    success:
+      statusCode: 200
+      body:
+        userId: string
+        phoneNumber: string # 脱敏显示
+        registerTime: string
+        lastLoginTime: string
+    error:
+      - statusCode: 401
+        body: { error: "未授权访问" }
+  dependencies:
+    - DB-FindUserByPhone
+  acceptanceCriteria:
+    - 验证用户登录状态
+    - 返回用户基本信息
+    - 手机号进行脱敏处理
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"

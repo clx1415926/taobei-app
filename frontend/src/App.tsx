@@ -1,51 +1,60 @@
-import React, { useState } from 'react';
-import './App.css';
-import LoginPage from './components/LoginPage';
-
-interface User {
-  phone: string;
-}
+import { useState, useEffect } from 'react'
+import { Routes, Route, useNavigate } from 'react-router-dom'
+import Homepage from './pages/Homepage'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import SearchResults from './pages/SearchResults'
+import { authApi } from './services/api'
+import { User } from './types'
 
 function App() {
-  const [user, setUser] = useState<User | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userInfo, setUserInfo] = useState<User | null>(null);
+  const navigate = useNavigate();
 
-  const handleLogin = (userData: User) => {
-    setUser(userData);
-  };
+  useEffect(() => {
+    // 检查本地存储中的登录状态
+    const token = localStorage.getItem('token');
+    const savedUser = localStorage.getItem('user');
+    
+    if (token && savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setIsLoggedIn(true);
+        setUserInfo(user);
+      } catch (error) {
+        // 如果解析失败，清除无效数据
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
+    }
+  }, []);
 
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // 无论API调用是否成功，都清除本地状态
+      setIsLoggedIn(false);
+      setUserInfo(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/');
+    }
   };
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="app-title">
-          <div className="logo">淘</div>
-          <div className="title-text">淘宝</div>
-        </div>
-        <div className="subtitle">用户注册</div>
-      </header>
-      
-      <div className="login-container">
-        {user ? (
-          <div className="user-info">
-            <h2 className="welcome-message">欢迎回来！</h2>
-            <p className="user-phone">手机号：{user.phone}</p>
-            <button className="logout-button" onClick={handleLogout}>
-              退出登录
-            </button>
-          </div>
-        ) : (
-          <LoginPage onLogin={handleLogin} />
-        )}
-      </div>
-      
-      <div className="terms">
-        已阅读并同意《淘宝网服务协议》、《隐私权政策》、《支付宝用户服务协议》
-      </div>
+    <div className="App">
+      <Routes>
+        <Route path="/" element={<Homepage isLoggedIn={isLoggedIn} userInfo={userInfo} onLogout={handleLogout} />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/search" element={<SearchResults />} />
+      </Routes>
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
