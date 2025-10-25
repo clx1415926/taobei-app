@@ -5,11 +5,36 @@ describe('User API', () => {
   let authToken;
 
   beforeEach(async () => {
+    // 先发送验证码
+    await request(app)
+      .post('/api/auth/send-verification-code')
+      .send({
+        phoneNumber: '13800138050',
+        type: 'register'
+      });
+    
+    // 先注册用户
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        phoneNumber: '13800138050',
+        verificationCode: '123456',
+        agreeToTerms: true
+      });
+    
+    // 为登录发送验证码
+    await request(app)
+      .post('/api/auth/send-verification-code')
+      .send({
+        phoneNumber: '13800138050',
+        type: 'login'
+      });
+    
     // 为每个测试准备登录状态
     const loginResponse = await request(app)
       .post('/api/auth/login')
       .send({
-        phoneNumber: '13800138000',
+        phoneNumber: '13800138050',
         verificationCode: '123456'
       });
     

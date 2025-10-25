@@ -142,6 +142,30 @@ class Product {
         sales_count: 3450,
         stock: 300,
         is_hot: true
+      },
+      {
+        id: uuidv4(),
+        name: '耐克运动鞋',
+        description: '舒适透气，运动首选',
+        price: 599.00,
+        original_price: 699.00,
+        image_url: '/images/nike-shoes.jpg',
+        category_id: categories[5].id,
+        sales_count: 1120,
+        stock: 120,
+        is_hot: true
+      },
+      {
+        id: uuidv4(),
+        name: 'MacBook Air M2',
+        description: '轻薄便携，性能卓越',
+        price: 8999.00,
+        original_price: 9999.00,
+        image_url: '/images/macbook-air.jpg',
+        category_id: categories[0].id,
+        sales_count: 780,
+        stock: 50,
+        is_hot: true
       }
     ];
 
@@ -213,6 +237,7 @@ class Product {
     
     let orderBy = 'p.sales_count DESC';
     switch (sortBy) {
+      case 'price':
       case 'price_asc':
         orderBy = 'p.price ASC';
         break;
@@ -221,6 +246,9 @@ class Product {
         break;
       case 'newest':
         orderBy = 'p.created_at DESC';
+        break;
+      case 'relevance':
+        orderBy = 'p.sales_count DESC'; // 暂时用销量作为相关度
         break;
       default:
         orderBy = 'p.sales_count DESC';

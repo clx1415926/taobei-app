@@ -33,11 +33,36 @@ describe('Homepage API', () => {
     });
 
     it('如果用户已登录，应该返回用户基本信息', async () => {
-      // 先登录获取token
+      // 先发送验证码
+      await request(app)
+        .post('/api/auth/send-verification-code')
+        .send({
+          phoneNumber: '13800138060',
+          type: 'register'
+        });
+
+      // 注册用户
+      const registerResponse = await request(app)
+        .post('/api/auth/register')
+        .send({
+          phoneNumber: '13800138060',
+          verificationCode: '123456',
+          agreeToTerms: true
+        });
+
+      // 再次发送验证码用于登录
+      await request(app)
+        .post('/api/auth/send-verification-code')
+        .send({
+          phoneNumber: '13800138060',
+          type: 'login'
+        });
+
+      // 登录获取token
       const loginResponse = await request(app)
         .post('/api/auth/login')
         .send({
-          phoneNumber: '13800138000',
+          phoneNumber: '13800138060',
           verificationCode: '123456'
         });
 
@@ -75,8 +100,9 @@ describe('Homepage API', () => {
 
   describe('GET /api/products/search', () => {
     it('应该支持关键词模糊搜索', async () => {
+      const keyword = encodeURIComponent('手机');
       const response = await request(app)
-        .get('/api/products/search?keyword=手机');
+        .get(`/api/products/search?keyword=${keyword}`);
 
       expect(response.status).toBe(200);
       expect(response.body.products).toBeDefined();
@@ -94,8 +120,9 @@ describe('Homepage API', () => {
     });
 
     it('应该支持分页查询', async () => {
+      const keyword = encodeURIComponent('手机');
       const response = await request(app)
-        .get('/api/products/search?keyword=手机&page=2&limit=10');
+        .get(`/api/products/search?keyword=${keyword}&page=2&limit=10`);
 
       expect(response.status).toBe(200);
       expect(response.body.page).toBe(2);
@@ -104,31 +131,34 @@ describe('Homepage API', () => {
     });
 
     it('应该支持多种排序方式', async () => {
+      const keyword = encodeURIComponent('手机');
+      
       // 测试按价格排序
       const priceResponse = await request(app)
-        .get('/api/products/search?keyword=手机&sortBy=price');
+        .get(`/api/products/search?keyword=${keyword}&sortBy=price`);
 
       expect(priceResponse.status).toBe(200);
       expect(priceResponse.body.products).toBeDefined();
 
       // 测试按销量排序
       const salesResponse = await request(app)
-        .get('/api/products/search?keyword=手机&sortBy=sales');
+        .get(`/api/products/search?keyword=${keyword}&sortBy=sales`);
 
       expect(salesResponse.status).toBe(200);
       expect(salesResponse.body.products).toBeDefined();
 
       // 测试按相关度排序
       const relevanceResponse = await request(app)
-        .get('/api/products/search?keyword=手机&sortBy=relevance');
+        .get(`/api/products/search?keyword=${keyword}&sortBy=relevance`);
 
       expect(relevanceResponse.status).toBe(200);
       expect(relevanceResponse.body.products).toBeDefined();
     });
 
     it('应该返回搜索结果统计信息', async () => {
+      const keyword = encodeURIComponent('手机');
       const response = await request(app)
-        .get('/api/products/search?keyword=手机');
+        .get(`/api/products/search?keyword=${keyword}`);
 
       expect(response.status).toBe(200);
       expect(response.body.total).toBeDefined();

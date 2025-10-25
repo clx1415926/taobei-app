@@ -119,14 +119,14 @@ describe('Authentication API', () => {
       await request(app)
         .post('/api/auth/send-verification-code')
         .send({
-          phoneNumber: '13800138010',
+          phoneNumber: '13800138020',
           type: 'register'
         });
       
       await request(app)
         .post('/api/auth/register')
         .send({
-          phoneNumber: '13800138010',
+          phoneNumber: '13800138020',
           verificationCode: '123456',
           agreeToTerms: true
         });
@@ -135,7 +135,7 @@ describe('Authentication API', () => {
       await request(app)
         .post('/api/auth/send-verification-code')
         .send({
-          phoneNumber: '13800138010',
+          phoneNumber: '13800138020',
           type: 'login'
         });
     });
@@ -156,7 +156,7 @@ describe('Authentication API', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          phoneNumber: '13800138010',
+          phoneNumber: '13800138020',
           verificationCode: ''
         });
 
@@ -186,22 +186,30 @@ describe('Authentication API', () => {
     });
 
     it('应该验证验证码错误', async () => {
+      // 先发送验证码
+      await request(app)
+        .post('/api/auth/send-verification-code')
+        .send({
+          phoneNumber: '13800138020',
+          type: 'login'
+        });
+
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          phoneNumber: '13800138010',
+          phoneNumber: '13800138020',
           verificationCode: '000000' // 错误的验证码
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('验证码错误或已过期');
+      expect(response.body.error).toBe('验证码错误或已过期，请重新获取');
     });
 
     it('应该成功登录并生成JWT token', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          phoneNumber: '13800138010',
+          phoneNumber: '13800138020',
           verificationCode: '123456'
         });
 
@@ -321,20 +329,31 @@ describe('Authentication API', () => {
     });
 
     it('应该检查手机号是否已注册，如果已注册则直接登录', async () => {
-      // 先注册一次
+      // 先发送验证码
       await request(app)
+        .post('/api/auth/send-verification-code')
+        .send({
+          phoneNumber: '13800138030',
+          type: 'register'
+        });
+
+      // 先注册一次
+      const firstRegisterResponse = await request(app)
         .post('/api/auth/register')
         .send({
-          phoneNumber: '13800138000',
+          phoneNumber: '13800138030',
           verificationCode: '123456',
           agreeToTerms: true
         });
+      
+      // 确保第一次注册成功
+      expect(firstRegisterResponse.status).toBe(201);
 
       // 为第二次注册重新发送验证码
       await request(app)
         .post('/api/auth/send-verification-code')
         .send({
-          phoneNumber: '13800138000',
+          phoneNumber: '13800138030',
           type: 'register'
         });
 
@@ -342,7 +361,7 @@ describe('Authentication API', () => {
       const response = await request(app)
         .post('/api/auth/register')
         .send({
-          phoneNumber: '13800138000',
+          phoneNumber: '13800138030',
           verificationCode: '123456',
           agreeToTerms: true
         });
@@ -355,10 +374,18 @@ describe('Authentication API', () => {
     });
 
     it('应该成功创建新用户并自动登录', async () => {
+      // 先发送验证码
+      await request(app)
+        .post('/api/auth/send-verification-code')
+        .send({
+          phoneNumber: '13800138040',
+          type: 'register'
+        });
+
       const response = await request(app)
         .post('/api/auth/register')
         .send({
-          phoneNumber: '13800138001',
+          phoneNumber: '13800138040',
           verificationCode: '123456',
           agreeToTerms: true
         });
@@ -405,7 +432,7 @@ describe('Authentication API', () => {
         });
 
       expect(response.status).toBe(400);
-      expect(response.body.error).toBe('验证码已过期，请重新获取');
+      expect(response.body.error).toBe('验证码错误或已过期，请重新获取');
     });
   });
 

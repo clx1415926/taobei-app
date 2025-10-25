@@ -31,6 +31,11 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<ApiRe
     }
     
     if (!response.ok) {
+      // 特殊处理409状态码（用户已存在）- 返回数据而不是抛出错误
+      if (response.status === 409 && data.token) {
+        // 如果409响应包含token，说明是自动登录，返回成功响应
+        return data;
+      }
       throw new Error(data.error || `Request failed with status ${response.status}`);
     }
 
@@ -61,7 +66,7 @@ export const authApi = {
       body: JSON.stringify({ phoneNumber, verificationCode }),
     });
     
-    // 保存token到localStorage
+    // 保存token到localStorage - 后端直接返回token字段，不是在data中
     if (response.token) {
       localStorage.setItem('authToken', response.token);
     }
@@ -76,7 +81,7 @@ export const authApi = {
       body: JSON.stringify({ phoneNumber, verificationCode, agreeToTerms }),
     });
     
-    // 保存token到localStorage
+    // 保存token到localStorage - 后端直接返回token字段，不是在data中
     if (response.token) {
       localStorage.setItem('authToken', response.token);
     }

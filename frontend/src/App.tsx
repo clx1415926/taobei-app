@@ -14,7 +14,7 @@ function App() {
 
   useEffect(() => {
     // 检查本地存储中的登录状态
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('authToken');
     const savedUser = localStorage.getItem('user');
     
     if (token && savedUser) {
@@ -24,7 +24,7 @@ function App() {
         setUserInfo(user);
       } catch (error) {
         // 如果解析失败，清除无效数据
-        localStorage.removeItem('token');
+        localStorage.removeItem('authToken');
         localStorage.removeItem('user');
       }
     }
@@ -39,7 +39,7 @@ function App() {
       // 无论API调用是否成功，都清除本地状态
       setIsLoggedIn(false);
       setUserInfo(null);
-      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
       localStorage.removeItem('user');
       navigate('/');
     }

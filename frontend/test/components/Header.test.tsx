@@ -18,7 +18,7 @@ describe('Header Component', () => {
 
   const mockUser: User = {
     id: '1',
-    phoneNumber: '13800138000',
+    phoneNumber: '138****8000', // 使用脱敏后的手机号，匹配后端实际返回的格式
     registeredAt: '2024-01-01T00:00:00Z',
     lastLoginAt: '2024-01-02T00:00:00Z'
   };
@@ -56,7 +56,7 @@ describe('Header Component', () => {
     );
 
     // 验证显示用户手机号
-    expect(screen.getByText(mockUser.phoneNumber)).toBeInTheDocument();
+    expect(screen.getByText(`欢迎，${mockUser.phoneNumber}`)).toBeInTheDocument();
     
     // 验证显示退出登录按钮
     expect(screen.getByText(/退出登录/i)).toBeInTheDocument();

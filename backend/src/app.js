@@ -30,7 +30,7 @@ app.use(express.json());
 
 // 路由
 app.use('/api/auth', authRoutes);
-app.use('/api/homepage', homepageRoutes);
+app.use('/api', homepageRoutes);
 app.use('/api/user', userRoutes);
 
 // 健康检查

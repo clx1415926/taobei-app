@@ -23,6 +23,8 @@ const LoginPage: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : '登录失败，请重试';
       setError(errorMessage);
       console.error('Login failed:', error);
+      // 重新抛出错误，让LoginForm组件能够捕获并重置loading状态
+      throw error;
     }
   };
 

@@ -12,7 +12,9 @@ const RegisterPage: React.FC = () => {
   const handleRegister = async (phoneNumber: string, verificationCode: string) => {
     try {
       setError('');
+      console.log('Attempting registration with:', { phoneNumber, verificationCode });
       const response = await authApi.register(phoneNumber, verificationCode, true);
+      console.log('Registration response:', response);
       if (response.token) {
         // Token已在authApi.register中保存到localStorage
         // 跳转到首页并刷新以更新全局状态
@@ -20,9 +22,14 @@ const RegisterPage: React.FC = () => {
         window.location.reload();
       }
     } catch (error) {
+      console.error('Register failed:', error);
+      console.error('Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        error
+      });
       const errorMessage = error instanceof Error ? error.message : '注册失败，请重试';
       setError(errorMessage);
-      console.error('Register failed:', error);
       // 重新抛出错误，让RegisterForm能够重置loading状态
       throw error;
     }

@@ -194,21 +194,17 @@ class AuthService {
   verifyToken(token) {
     try {
       const decoded = jwt.verify(token, this.jwtSecret);
-      const session = this.userModel.validateSession(token);
       
-      if (!session) {
-        throw new Error('会话已过期');
+      // 验证用户是否存在
+      const user = this.userModel.getUserById(decoded.userId);
+      if (!user) {
+        throw new Error('用户不存在');
       }
 
       return {
         userId: decoded.userId,
         phoneNumber: decoded.phoneNumber,
-        user: {
-          id: session.id,
-          phone_number: session.phone_number,
-          created_at: session.created_at,
-          last_login_at: session.last_login_at
-        }
+        user: user
       };
     } catch (error) {
       throw new Error('无效的token');

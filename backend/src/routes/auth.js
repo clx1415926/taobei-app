@@ -59,21 +59,22 @@ router.post('/login', [
   try {
     const { phoneNumber, verificationCode } = req.body;
     const ipAddress = req.ip || req.connection.remoteAddress;
+    console.log('Login request:', { phoneNumber, verificationCode: verificationCode ? '***' : 'missing', ipAddress });
     const result = await getAuthService().login(phoneNumber, verificationCode, ipAddress);
+    console.log('Login success:', { userId: result.userId, message: result.message });
     res.json(result);
   } catch (error) {
+    console.error('Login error:', error.message);
     if (error.message.includes('该手机号未注册')) {
       return res.status(404).json({ error: error.message, redirectUrl: '/register' });
     }
-    if (error.message.includes('验证码错误')) {
-      return res.status(400).json({ error: error.message });
-    }
-    if (error.message.includes('验证码已过期')) {
-      return res.status(400).json({ error: error.message });
+    if (error.message.includes('验证码错误') || error.message.includes('验证码已过期')) {
+      return res.status(400).json({ error: '验证码错误或已过期，请重新获取' });
     }
     if (error.message.includes('登录失败次数过多')) {
       return res.status(429).json({ error: error.message });
     }
+    console.error('Unexpected login error:', error.message, error.stack);
     res.status(500).json({ error: '服务器内部错误' });
   }
 });
@@ -96,18 +97,27 @@ router.post('/register', [
 
   try {
     const { phoneNumber, verificationCode, agreeToTerms } = req.body;
+    console.log('Register request:', { phoneNumber, verificationCode: verificationCode ? '***' : 'missing', agreeToTerms });
     const result = await getAuthService().register(phoneNumber, verificationCode, agreeToTerms);
+    console.log('Register success:', { userId: result.userId, message: result.message });
     res.status(201).json(result);
   } catch (error) {
+    console.error('Register error:', error);
     if (error.isExistingUser) {
-      return res.status(409).json(error.userData);
+      console.log('User already exists, returning auto-login response');
+      return res.status(409).json({ 
+        error: '手机号已注册',
+        message: '该手机号已注册，请直接登录',
+        ...error.userData 
+      });
     }
     if (error.message.includes('请同意用户协议')) {
       return res.status(400).json({ error: error.message });
     }
-    if (error.message.includes('验证码错误') || error.message.includes('验证码已过期')) {
-      return res.status(400).json({ error: '验证码已过期，请重新获取' });
+    if (error.message.includes('验证码错误') || error.message.includes('验证码已过期') || error.message.includes('验证码无效')) {
+      return res.status(400).json({ error: '验证码错误或已过期，请重新获取' });
     }
+    console.error('Unexpected register error:', error.message, error.stack);
     res.status(500).json({ error: '服务器内部错误' });
   }
 });

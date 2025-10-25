@@ -7,7 +7,7 @@ const router = express.Router();
 const productModel = new Product();
 
 // API-GET-Homepage
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/homepage', optionalAuth, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 8;
     
@@ -39,6 +39,7 @@ router.get('/', optionalAuth, async (req, res) => {
         name: product.name,
         price: product.price,
         originalPrice: product.original_price,
+        image: product.image_url,
         imageUrl: product.image_url,
         sales: product.sales_count,
         categoryName: product.category_name
@@ -67,15 +68,16 @@ router.get('/', optionalAuth, async (req, res) => {
 });
 
 // API-GET-SearchProducts
-router.get('/search', [
+router.get('/products/search', [
   query('keyword').notEmpty().withMessage('请输入搜索关键词'),
   query('page').optional().isInt({ min: 1 }).withMessage('页码参数无效'),
   query('limit').optional().isInt({ min: 1, max: 50 }).withMessage('每页数量参数无效'),
-  query('sortBy').optional().isIn(['relevance', 'price_asc', 'price_desc', 'sales']).withMessage('排序参数无效')
+  query('sortBy').optional().isIn(['relevance', 'price', 'price_asc', 'price_desc', 'sales']).withMessage('排序参数无效')
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({ error: '请输入搜索关键词' });
+    const firstError = errors.array()[0];
+    return res.status(400).json({ error: firstError.msg });
   }
 
   try {
@@ -111,7 +113,7 @@ router.get('/search', [
   }
 });
 
-// API-GET-Categories
+// API-GET-ProductCategories
 router.get('/categories', async (req, res) => {
   try {
     const categories = productModel.getCategories();

@@ -15,7 +15,7 @@ const authenticateToken = async (req, res, next) => {
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    return res.status(401).json({ error: '未提供认证token' });
+    return res.status(401).json({ error: '未授权访问' });
   }
 
   try {
@@ -23,7 +23,7 @@ const authenticateToken = async (req, res, next) => {
     req.user = userInfo;
     next();
   } catch (error) {
-    return res.status(401).json({ error: '无效或过期的token' });
+    return res.status(401).json({ error: '未授权访问' });
   }
 };
 
