@@ -21,7 +21,13 @@ class User {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         last_login_at DATETIME,
-        status TEXT DEFAULT 'active'
+        status TEXT DEFAULT 'active',
+        password_hash TEXT,
+        password_salt TEXT,
+        password_set_time DATETIME,
+        password_history TEXT,
+        password_fail_count INTEGER DEFAULT 0,
+        account_locked_until DATETIME
       )
     `);
 
@@ -151,6 +157,26 @@ class User {
     return { success: true };
   }
 
+  // 检查验证码（不消费验证码）
+  checkVerificationCode(phoneNumber, code, type) {
+    const verificationCode = this.getLatestVerificationCode(phoneNumber, type);
+    
+    if (!verificationCode) {
+      return { success: false, error: 'INVALID_CODE' };
+    }
+    
+    if (verificationCode.code !== code) {
+      return { success: false, error: 'INVALID_CODE' };
+    }
+    
+    if (new Date() > new Date(verificationCode.expires_at)) {
+      return { success: false, error: 'EXPIRED_CODE' };
+    }
+    
+    // 不标记验证码为已使用，只验证有效性
+    return { success: true };
+  }
+
   // 标记验证码为已使用
   markVerificationCodeAsUsed(id) {
     const stmt = this.db.prepare('UPDATE verification_codes SET used = TRUE WHERE id = ?');
@@ -268,6 +294,187 @@ class User {
   // 关闭数据库连接
   close() {
     this.db.close();
+  }
+
+  // 密码相关方法
+  
+  // 设置用户密码
+  setUserPassword(userId, passwordHash, passwordSalt) {
+    const user = this.getUserById(userId);
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+
+    // 获取历史密码
+    let passwordHistory = [];
+    if (user.password_history) {
+      try {
+        passwordHistory = JSON.parse(user.password_history);
+      } catch (e) {
+        passwordHistory = [];
+      }
+    }
+
+    // 添加当前密码到历史记录（如果存在）
+    if (user.password_hash) {
+      passwordHistory.unshift({
+        hash: user.password_hash,
+        salt: user.password_salt,
+        set_time: user.password_set_time
+      });
+      
+      // 只保留最近3次密码
+      passwordHistory = passwordHistory.slice(0, 3);
+    }
+
+    const stmt = this.db.prepare(`
+      UPDATE users 
+      SET password_hash = ?, 
+          password_salt = ?, 
+          password_set_time = CURRENT_TIMESTAMP,
+          password_history = ?,
+          password_fail_count = 0,
+          account_locked_until = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    stmt.run(passwordHash, passwordSalt, JSON.stringify(passwordHistory), userId);
+    return this.getUserById(userId);
+  }
+
+  // 验证用户密码
+  verifyUserPassword(userId, passwordHash) {
+    const user = this.getUserById(userId);
+    if (!user || !user.password_hash) {
+      return false;
+    }
+    
+    return user.password_hash === passwordHash;
+  }
+
+  // 检查密码历史
+  checkPasswordHistory(userId, passwordHash) {
+    const user = this.getUserById(userId);
+    if (!user) {
+      return false;
+    }
+
+    // 检查当前密码
+    if (user.password_hash === passwordHash) {
+      return true;
+    }
+
+    // 检查历史密码
+    if (user.password_history) {
+      try {
+        const passwordHistory = JSON.parse(user.password_history);
+        return passwordHistory.some(p => p.hash === passwordHash);
+      } catch (e) {
+        return false;
+      }
+    }
+
+    return false;
+  }
+
+  // 获取密码失败次数
+  getPasswordFailCount(userId) {
+    const user = this.getUserById(userId);
+    if (!user) {
+      return 0;
+    }
+    
+    // 检查账户是否被锁定
+    if (user.account_locked_until) {
+      const lockTime = new Date(user.account_locked_until);
+      if (lockTime > new Date()) {
+        return { 
+          failCount: user.password_fail_count || 0, 
+          isLocked: true, 
+          lockedUntil: lockTime 
+        };
+      } else {
+        // 锁定时间已过，重置锁定状态
+        this.resetPasswordFailCount(userId);
+        return { failCount: 0, isLocked: false };
+      }
+    }
+    
+    return { 
+      failCount: user.password_fail_count || 0, 
+      isLocked: false 
+    };
+  }
+
+  // 更新密码失败次数
+  updatePasswordFailCount(userId, increment = true) {
+    const user = this.getUserById(userId);
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+
+    let newFailCount = (user.password_fail_count || 0);
+    let lockedUntil = null;
+
+    if (increment) {
+      newFailCount += 1;
+      // 失败5次后锁定账户15分钟
+      if (newFailCount >= 5) {
+        lockedUntil = new Date(Date.now() + 15 * 60 * 1000); // 15分钟后
+      }
+    } else {
+      newFailCount = 0;
+    }
+
+    const stmt = this.db.prepare(`
+      UPDATE users 
+      SET password_fail_count = ?, 
+          account_locked_until = ?,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `);
+    
+    stmt.run(newFailCount, lockedUntil ? lockedUntil.toISOString() : null, userId);
+    return this.getUserById(userId);
+  }
+
+  // 重置密码失败次数
+  resetPasswordFailCount(userId) {
+    return this.updatePasswordFailCount(userId, false);
+  }
+
+  // 检查用户是否设置了密码
+  hasPassword(userId) {
+    const user = this.getUserById(userId);
+    return user && !!user.password_hash;
+  }
+
+  // 根据手机号检查密码状态
+  getPasswordStatusByPhone(phoneNumber) {
+    const user = this.getUserByPhoneNumber(phoneNumber);
+    if (!user) {
+      return { 
+        hasPassword: false, 
+        passwordSetTime: null,
+        passwordUpdateTime: null,
+        needPasswordUpdate: false,
+        isLocked: false,
+        lockedUntil: null,
+        failCount: 0
+      };
+    }
+
+    const failInfo = this.getPasswordFailCount(user.id);
+    return {
+      hasPassword: !!user.password_hash,
+      passwordSetTime: user.password_set_time || null,
+      passwordUpdateTime: user.password_set_time || null, // 如果没有更新时间，使用设置时间
+      needPasswordUpdate: false, // 根据业务需求设置
+      isLocked: failInfo.isLocked || false,
+      lockedUntil: failInfo.lockedUntil || null,
+      failCount: failInfo.failCount || 0
+    };
   }
 }
 

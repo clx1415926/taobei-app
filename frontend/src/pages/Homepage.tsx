@@ -62,9 +62,9 @@ const Homepage: React.FC<HomepageProps> = ({ isLoggedIn = false, userInfo, onLog
 
   if (loading) {
     return (
-      <div>
+      <div className="homepage">
         <Header isLoggedIn={isLoggedIn} userInfo={userInfo || undefined} onLogout={onLogout} />
-        <div style={{ padding: '50px 0', textAlign: 'center' }}>
+        <div className="loading-container">
           <LoadingSpinner size="large" text="加载中..." />
         </div>
       </div>
@@ -72,39 +72,55 @@ const Homepage: React.FC<HomepageProps> = ({ isLoggedIn = false, userInfo, onLog
   }
 
   return (
-    <div>
+    <div className="homepage">
       <Header isLoggedIn={isLoggedIn} userInfo={userInfo || undefined} onLogout={onLogout} />
       
-      <main className="container" style={{ paddingTop: '20px' }}>
-        <SearchBar onSearch={handleSearch} />
-        
-        {error && (
-          <ErrorMessage 
-            message={error} 
-            onRetry={loadHomepageData}
-            onClose={() => setError('')}
-          />
-        )}
-        
-        <section style={{ marginBottom: '30px' }}>
-          <h2 style={{ marginBottom: '20px', fontSize: '18px', fontWeight: 'bold' }}>
-            商品分类
-          </h2>
-          <CategoryNavigation 
-            categories={data.categories}
-            onCategoryClick={handleCategoryClick}
-          />
-        </section>
-        
-        <section>
-          <h2 style={{ marginBottom: '20px', fontSize: '18px', fontWeight: 'bold' }}>
-            热门商品
-          </h2>
-          <ProductGrid 
-            products={data.hotProducts}
-            onProductClick={handleProductClick}
-          />
-        </section>
+      <main className="homepage-main">
+        <div className="homepage-container">
+          <div className="search-section">
+            <SearchBar onSearch={handleSearch} />
+          </div>
+          
+          {error && (
+            <div className="error-section">
+              <ErrorMessage 
+                message={error} 
+                onRetry={loadHomepageData}
+                onClose={() => setError('')}
+              />
+            </div>
+          )}
+          
+          <section className="categories-section">
+            <div className="section-header">
+              <h2 className="section-title">
+                <svg className="section-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                商品分类
+              </h2>
+            </div>
+            <CategoryNavigation 
+              categories={data.categories}
+              onCategoryClick={handleCategoryClick}
+            />
+          </section>
+          
+          <section className="products-section">
+            <div className="section-header">
+              <h2 className="section-title">
+                <svg className="section-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                热门商品
+              </h2>
+            </div>
+            <ProductGrid 
+              products={data.hotProducts}
+              onProductClick={handleProductClick}
+            />
+          </section>
+        </div>
       </main>
     </div>
   );

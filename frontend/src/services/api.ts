@@ -96,7 +96,7 @@ async function request<T>(url: string, options: RequestInit = {}): Promise<ApiRe
 // 认证相关API
 export const authApi = {
   // 发送验证码
-  sendVerificationCode: async (phoneNumber: string, type: 'login' | 'register' = 'register'): Promise<ApiResponse> => {
+  sendVerificationCode: async (phoneNumber: string, type: 'login' | 'register' | 'reset' = 'register'): Promise<ApiResponse> => {
     return request('/auth/send-verification-code', {
       method: 'POST',
       body: JSON.stringify({ phoneNumber, type }),
@@ -147,6 +147,50 @@ export const authApi = {
     localStorage.removeItem('authToken');
     
     return response;
+  },
+
+  // 密码相关API
+  setPassword: async (phoneNumber: string, password: string, confirmPassword: string): Promise<ApiResponse> => {
+    return request('/auth/set-password', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, password, confirmPassword }),
+    });
+  },
+
+  loginWithPassword: async (phoneNumber: string, password: string): Promise<AuthResponse> => {
+    return authRequest('/auth/login-password', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, password }),
+    });
+  },
+
+  resetPassword: async (phoneNumber: string, verificationCode: string, newPassword: string, confirmPassword: string): Promise<ApiResponse> => {
+    return request('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, verificationCode, newPassword, confirmPassword }),
+    });
+  },
+
+  verifyResetCode: async (phoneNumber: string, verificationCode: string): Promise<ApiResponse> => {
+    return request('/auth/verify-reset-code', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, verificationCode }),
+    });
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string, confirmPassword: string): Promise<ApiResponse> => {
+    const token = localStorage.getItem('token');
+    return request('/auth/change-password', {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+    });
+  },
+
+  getPasswordStatus: async (phoneNumber: string): Promise<ApiResponse<{hasPassword: boolean, isLocked: boolean, lockedUntil?: string, failCount: number}>> => {
+    return request(`/auth/password-status?phoneNumber=${encodeURIComponent(phoneNumber)}`);
   }
 };
 

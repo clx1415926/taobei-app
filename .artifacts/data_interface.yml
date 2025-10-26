@@ -10,9 +10,12 @@
     - 成功执行后，users表中会增加一条新记录
     - 如果手机号已存在，操作应失败并抛出唯一性约束错误
     - 用户信息包含手机号（加密存储）、注册时间、来源等字段
+    - 支持密码相关字段的初始化（password_hash, password_salt等）
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"
+    - date: "2025-10-24"
+      description: "扩展支持密码相关字段"
 
 - type: Database
   id: DB-FindUserByPhone
@@ -22,10 +25,12 @@
   acceptanceCriteria:
     - 能够根据加密后的手机号查询到对应用户记录
     - 如果用户不存在，返回空结果
-    - 查询结果包含用户ID、注册状态等基本信息
+    - 查询结果包含用户ID、注册状态、密码设置状态等基本信息
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"
+    - date: "2025-10-24"
+      description: "增加密码设置状态查询"
 
 - type: Database
   id: DB-CreateVerificationCode
@@ -72,12 +77,14 @@
   dependencies:
     - none
   acceptanceCriteria:
-    - 记录IP地址、手机号、登录时间、登录结果（成功/失败）
+    - 记录IP地址、手机号、登录时间、登录结果（成功/失败）、登录方式
     - 支持按IP地址和时间范围查询登录失败次数
     - 用于安全控制和防刷机制
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"
+    - date: "2025-10-24"
+      description: "增加登录方式记录"
 
 - type: Database
   id: DB-GetProducts
@@ -126,8 +133,78 @@
     - DB-FindUserByPhone
   acceptanceCriteria:
     - 更新用户的登录状态为已登录
-    - 记录最后登录时间
+    - 记录最后登录时间和登录方式
     - 可选择性更新登录IP地址
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+    - date: "2025-10-24"
+      description: "增加登录方式记录"
+
+- type: Database
+  id: DB-SetUserPassword
+  description: 设置或更新用户密码
+  dependencies:
+    - DB-FindUserByPhone
+  acceptanceCriteria:
+    - 使用bcrypt算法对密码进行哈希加密
+    - 为每个密码生成唯一的盐值
+    - 更新password_hash、password_salt、password_set_time字段
+    - 记录密码历史（最近3次）到password_history字段
+    - 重置登录失败计数器
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-VerifyUserPassword
+  description: 验证用户密码是否正确
+  dependencies:
+    - DB-FindUserByPhone
+  acceptanceCriteria:
+    - 使用bcrypt验证密码哈希
+    - 检查用户是否已设置密码
+    - 验证成功返回用户信息
+    - 验证失败记录失败次数
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-GetPasswordFailCount
+  description: 获取用户密码登录失败次数
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 查询指定手机号的连续密码失败次数
+    - 检查账户锁定状态和锁定截止时间
+    - 返回当前失败计数和锁定信息
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-UpdatePasswordFailCount
+  description: 更新密码登录失败次数
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 增加或重置密码失败计数
+    - 达到失败上限时设置账户锁定时间
+    - 成功登录时重置失败计数
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Database
+  id: DB-CheckPasswordHistory
+  description: 检查新密码是否与历史密码重复
+  dependencies:
+    - DB-FindUserByPhone
+  acceptanceCriteria:
+    - 比对新密码与最近3次历史密码
+    - 防止用户重复使用相同密码
+    - 返回是否重复的验证结果
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"

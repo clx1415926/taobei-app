@@ -21,46 +21,26 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ 
-      display: 'flex', 
-      gap: '10px',
-      maxWidth: '500px',
-      margin: '20px auto'
-    }}>
-      <input
-        type="text"
-        value={keyword}
-        onChange={(e) => setKeyword(e.target.value)}
-        placeholder={placeholder}
-        style={{
-          flex: 1,
-          padding: '12px 16px',
-          border: '2px solid #ddd',
-          borderRadius: '25px',
-          fontSize: '14px',
-          outline: 'none'
-        }}
-        onFocus={(e) => {
-          e.target.style.borderColor = '#ff6b35';
-        }}
-        onBlur={(e) => {
-          e.target.style.borderColor = '#ddd';
-        }}
-      />
-      <button
-        type="submit"
-        style={{
-          padding: '12px 24px',
-          backgroundColor: '#ff6b35',
-          color: 'white',
-          border: 'none',
-          borderRadius: '25px',
-          cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}
-      >
-        搜索
+    <form onSubmit={handleSubmit} className="search-bar-form">
+      <div className="search-input-wrapper">
+        <svg className="search-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input
+          type="text"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          placeholder={placeholder}
+          className="search-input"
+        />
+      </div>
+      <button type="submit" className="search-btn">
+        <svg className="search-btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <span className="search-btn-text">搜索</span>
       </button>
     </form>
   );

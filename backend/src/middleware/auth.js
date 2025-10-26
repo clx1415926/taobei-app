@@ -1,4 +1,4 @@
-const AuthService = require('../services/authService');
+const AuthService = require('../services/AuthService');
 
 // 使用单例模式确保所有请求使用同一个AuthService实例
 let authServiceInstance = null;
