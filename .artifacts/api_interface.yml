@@ -4,12 +4,12 @@
 - type: Backend
   id: API-POST-SendVerificationCode
   route: POST /api/auth/send-verification-code
-  description: 发送手机验证码接口，支持登录和注册场景
+  description: 发送手机验证码接口，支持登录、注册和密码重置场景
   input:
     type: JSON
     body:
       phoneNumber: string
-      type: string # "login" 或 "register"
+      type: string # "login", "register", "reset-password"
   output:
     success:
       statusCode: 200
@@ -30,9 +30,12 @@
     - 检查IP访问频率限制
     - 生成6位数字验证码并存储到数据库
     - 开发环境在控制台打印验证码
+    - 支持密码重置场景的验证码发送
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"
+    - date: "2025-10-24"
+      description: "扩展支持密码重置场景"
 
 - type: Backend
   id: API-POST-Login
@@ -46,7 +49,7 @@
   output:
     success:
       statusCode: 200
-      body: { message: "登录成功", userId: "uuid", token: "jwt", redirectUrl: "/" }
+      body: { message: "登录成功", userId: "uuid", token: "jwt", redirectUrl: "/", loginMethod: "sms_code", hasPassword: boolean }
     error:
       - statusCode: 400
         body: { error: "请输入手机号" }
@@ -71,9 +74,12 @@
     - 记录登录尝试信息
     - 实施IP登录失败次数限制
     - 成功登录后生成JWT token
+    - 返回用户密码设置状态
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"
+    - date: "2025-10-24"
+      description: "增加密码设置状态返回"
 
 - type: Backend
   id: API-POST-Register
@@ -88,7 +94,7 @@
   output:
     success:
       statusCode: 201
-      body: { message: "注册成功", userId: "uuid", token: "jwt", redirectUrl: "/" }
+      body: { message: "注册成功", userId: "uuid", token: "jwt", redirectUrl: "/", hasPassword: false }
     error:
       - statusCode: 400
         body: { error: "请输入正确的手机号码" }
@@ -101,7 +107,7 @@
       - statusCode: 400
         body: { error: "请同意用户协议" }
       - statusCode: 409
-        body: { message: "该手机号已注册，将直接为您登录", userId: "uuid", token: "jwt", redirectUrl: "/" }
+        body: { message: "该手机号已注册，将直接为您登录", userId: "uuid", token: "jwt", redirectUrl: "/", hasPassword: boolean }
   dependencies:
     - DB-FindUserByPhone
     - DB-VerifyCode
@@ -113,9 +119,12 @@
     - 检查手机号是否已注册
     - 如果已注册则直接登录
     - 创建新用户并自动登录
+    - 返回密码设置状态
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"
+    - date: "2025-10-24"
+      description: "增加密码设置状态返回"
 
 - type: Backend
   id: API-GET-Homepage
@@ -248,6 +257,8 @@
         phoneNumber: string # 脱敏显示
         registerTime: string
         lastLoginTime: string
+        hasPassword: boolean
+        passwordSetTime: string # 可选
     error:
       - statusCode: 401
         body: { error: "未授权访问" }
@@ -257,6 +268,221 @@
     - 验证用户登录状态
     - 返回用户基本信息
     - 手机号进行脱敏处理
+    - 返回密码设置状态和设置时间
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+    - date: "2025-10-24"
+      description: "增加密码相关信息"
+
+- type: Backend
+  id: API-POST-SetPassword
+  route: POST /api/auth/set-password
+  description: 设置用户登录密码
+  input:
+    type: JSON
+    headers:
+      Authorization: "Bearer {token}"
+    body:
+      password: string
+      confirmPassword: string
+  output:
+    success:
+      statusCode: 200
+      body: { message: "密码设置成功" }
+    error:
+      - statusCode: 400
+        body: { error: "密码格式不符合要求" }
+      - statusCode: 400
+        body: { error: "两次输入的密码不一致" }
+      - statusCode: 400
+        body: { error: "新密码不能与最近3次使用的密码相同" }
+      - statusCode: 401
+        body: { error: "未授权访问" }
+      - statusCode: 409
+        body: { error: "用户已设置密码，请使用修改密码功能" }
+  dependencies:
+    - DB-FindUserByPhone
+    - DB-CheckPasswordHistory
+    - DB-SetUserPassword
+  acceptanceCriteria:
+    - 验证用户登录状态
+    - 验证密码强度要求（8-20字符，包含大小写字母和数字）
+    - 验证两次密码输入一致性
+    - 检查密码历史重复性
+    - 使用bcrypt加密存储密码
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-POST-LoginPassword
+  route: POST /api/auth/login-password
+  description: 使用密码登录
+  input:
+    type: JSON
+    body:
+      phoneNumber: string
+      password: string
+  output:
+    success:
+      statusCode: 200
+      body: { message: "登录成功", userId: "uuid", token: "jwt", redirectUrl: "/", loginMethod: "password" }
+    error:
+      - statusCode: 400
+        body: { error: "请输入手机号" }
+      - statusCode: 400
+        body: { error: "请输入密码" }
+      - statusCode: 400
+        body: { error: "手机号或密码错误" }
+      - statusCode: 404
+        body: { error: "该手机号未注册", redirectUrl: "/register" }
+      - statusCode: 400
+        body: { error: "您还未设置登录密码", suggestion: "use_sms_login" }
+      - statusCode: 423
+        body: { error: "密码错误次数过多，账户已被锁定30分钟", unlockTime: "timestamp" }
+      - statusCode: 429
+        body: { error: "登录失败次数过多，请15分钟后再试" }
+  dependencies:
+    - DB-FindUserByPhone
+    - DB-GetPasswordFailCount
+    - DB-VerifyUserPassword
+    - DB-UpdatePasswordFailCount
+    - DB-RecordLoginAttempt
+    - DB-UpdateUserLoginStatus
+  acceptanceCriteria:
+    - 验证手机号格式
+    - 检查用户是否已注册
+    - 检查用户是否已设置密码
+    - 验证账户锁定状态
+    - 验证密码正确性
+    - 记录登录尝试和结果
+    - 实施密码错误次数限制
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-POST-ResetPassword
+  route: POST /api/auth/reset-password
+  description: 重置用户密码
+  input:
+    type: JSON
+    body:
+      phoneNumber: string
+      verificationCode: string
+      newPassword: string
+      confirmPassword: string
+  output:
+    success:
+      statusCode: 200
+      body: { message: "密码重置成功" }
+    error:
+      - statusCode: 400
+        body: { error: "请输入正确的手机号码" }
+      - statusCode: 400
+        body: { error: "请输入验证码" }
+      - statusCode: 400
+        body: { error: "验证码错误" }
+      - statusCode: 400
+        body: { error: "验证码已过期，请重新获取" }
+      - statusCode: 400
+        body: { error: "密码格式不符合要求" }
+      - statusCode: 400
+        body: { error: "两次输入的密码不一致" }
+      - statusCode: 400
+        body: { error: "新密码不能与最近3次使用的密码相同" }
+      - statusCode: 404
+        body: { error: "该手机号未注册" }
+  dependencies:
+    - DB-FindUserByPhone
+    - DB-VerifyCode
+    - DB-CheckPasswordHistory
+    - DB-SetUserPassword
+    - DB-UpdatePasswordFailCount
+  acceptanceCriteria:
+    - 验证手机号和验证码
+    - 验证密码强度要求
+    - 验证两次密码输入一致性
+    - 检查密码历史重复性
+    - 重置密码并清除失败计数
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-PUT-ChangePassword
+  route: PUT /api/auth/change-password
+  description: 修改用户密码
+  input:
+    type: JSON
+    headers:
+      Authorization: "Bearer {token}"
+    body:
+      currentPassword: string
+      newPassword: string
+      confirmPassword: string
+  output:
+    success:
+      statusCode: 200
+      body: { message: "密码修改成功" }
+    error:
+      - statusCode: 400
+        body: { error: "请输入当前密码" }
+      - statusCode: 400
+        body: { error: "当前密码错误" }
+      - statusCode: 400
+        body: { error: "新密码格式不符合要求" }
+      - statusCode: 400
+        body: { error: "两次输入的新密码不一致" }
+      - statusCode: 400
+        body: { error: "新密码不能与最近3次使用的密码相同" }
+      - statusCode: 401
+        body: { error: "未授权访问" }
+      - statusCode: 400
+        body: { error: "用户未设置密码，请先设置密码" }
+  dependencies:
+    - DB-FindUserByPhone
+    - DB-VerifyUserPassword
+    - DB-CheckPasswordHistory
+    - DB-SetUserPassword
+  acceptanceCriteria:
+    - 验证用户登录状态
+    - 验证当前密码正确性
+    - 验证新密码强度要求
+    - 验证两次新密码输入一致性
+    - 检查新密码历史重复性
+    - 更新密码并记录历史
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Backend
+  id: API-GET-PasswordStatus
+  route: GET /api/auth/password-status
+  description: 查询用户密码设置状态
+  input:
+    type: Query
+    headers:
+      Authorization: "Bearer {token}"
+  output:
+    success:
+      statusCode: 200
+      body: 
+        hasPassword: boolean
+        passwordSetTime: string # 可选
+        passwordUpdateTime: string # 可选
+        needPasswordUpdate: boolean # 是否需要更新密码（超过90天）
+    error:
+      - statusCode: 401
+        body: { error: "未授权访问" }
+  dependencies:
+    - DB-FindUserByPhone
+  acceptanceCriteria:
+    - 验证用户登录状态
+    - 返回密码设置状态
+    - 返回密码设置和更新时间
+    - 判断是否需要定期更新密码
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"

@@ -164,48 +164,62 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <div style={{ 
-      maxWidth: '400px', 
-      margin: '50px auto', 
-      padding: '20px',
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      boxShadow: '0 2px 10px rgba(0,0,0,0.1)'
-    }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '30px' }}>用户注册</h2>
+    <div className="unified-form-container">
+      <div className="form-header">
+        <h2 className="form-title">
+          <svg className="form-title-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+          </svg>
+          用户注册
+        </h2>
+        <p className="form-subtitle">创建您的淘贝账户</p>
+      </div>
       
-      <form onSubmit={handleSubmit}>
+      <form className="unified-form" onSubmit={handleSubmit}>
         <div className="form-group">
-          <label className="form-label" htmlFor="phoneNumber">手机号</label>
-          <input
-            id="phoneNumber"
-            type="tel"
-            className="form-input"
-            value={formState.phoneNumber}
-            onChange={handlePhoneChange}
-            onBlur={handlePhoneBlur}
-            placeholder="请输入手机号"
-            required
-          />
+          <label className="form-label" htmlFor="phoneNumber">
+            <svg className="form-label-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
+            手机号
+          </label>
+          <div className="form-input-wrapper">
+            <input
+              id="phoneNumber"
+              type="tel"
+              className="form-input"
+              value={formState.phoneNumber}
+              onChange={handlePhoneChange}
+              onBlur={handlePhoneBlur}
+              placeholder="请输入手机号"
+              required
+            />
+          </div>
         </div>
 
         <div className="form-group">
-          <label className="form-label" htmlFor="verificationCode">验证码</label>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <input
-              id="verificationCode"
-              type="text"
-              className="form-input"
-              value={formState.verificationCode}
-              onChange={(e) => setFormState(prev => ({ ...prev, verificationCode: e.target.value }))}
-              placeholder="请输入验证码"
-            />
+          <label className="form-label" htmlFor="verificationCode">
+            <svg className="form-label-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            验证码
+          </label>
+          <div className="verification-code-container">
+            <div className="form-input-wrapper">
+              <input
+                id="verificationCode"
+                type="text"
+                className="form-input"
+                value={formState.verificationCode}
+                onChange={(e) => setFormState(prev => ({ ...prev, verificationCode: e.target.value }))}
+                placeholder="请输入验证码"
+              />
+            </div>
             <button
               type="button"
-              className="btn btn-secondary"
+              className={`verification-code-btn ${(!formState.canGetCode || formState.countdown > 0 || !!validatePhoneNumber(formState.phoneNumber)) ? 'disabled' : ''}`}
               onClick={handleGetCode}
               disabled={!formState.canGetCode || formState.countdown > 0 || !!validatePhoneNumber(formState.phoneNumber)}
-              style={{ minWidth: '100px' }}
             >
               {formState.countdown > 0 ? `${formState.countdown}s` : '获取验证码'}
             </button>
@@ -213,30 +227,46 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         </div>
 
         <div className="form-group">
-          <label htmlFor="agreeToTerms" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label className="checkbox-label" htmlFor="agreeToTerms">
             <input
               id="agreeToTerms"
               type="checkbox"
+              className="checkbox-input"
               checked={formState.agreeToTerms}
               onChange={(e) => setFormState(prev => ({ ...prev, agreeToTerms: e.target.checked }))}
             />
-            <span>我已阅读并同意用户协议</span>
+            <span className="checkbox-custom"></span>
+            我已阅读并同意用户协议
           </label>
         </div>
 
         {formState.error && (
-          <div className="error-message" style={{ marginBottom: '16px' }}>
+          <div className="form-error-message">
+            <svg className="error-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
             {formState.error}
           </div>
         )}
 
         <button
           type="submit"
-          className="btn btn-primary"
+          className={`form-submit-btn ${formState.isLoading ? 'loading' : ''}`}
           disabled={formState.isLoading}
-          style={{ width: '100%' }}
         >
-          {formState.isLoading ? <span className="loading"></span> : '注册'}
+          {formState.isLoading ? (
+            <>
+              <div className="loading-spinner"></div>
+              注册中...
+            </>
+          ) : (
+            <>
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+              </svg>
+              注册
+            </>
+          )}
         </button>
       </form>
     </div>

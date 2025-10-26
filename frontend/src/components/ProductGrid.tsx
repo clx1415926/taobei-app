@@ -14,12 +14,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 }) => {
   if (loading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '200px' 
-      }}>
+      <div className="product-grid-loading">
         <div className="loading" style={{ width: '32px', height: '32px' }}></div>
       </div>
     );
@@ -27,90 +22,54 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   if (products.length === 0) {
     return (
-      <div style={{ 
-        textAlign: 'center', 
-        padding: '40px',
-        color: '#666'
-      }}>
-        暂无商品
+      <div className="product-grid-empty">
+        <svg className="empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <span className="empty-text">暂无商品</span>
       </div>
     );
   }
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-      gap: '20px',
-      padding: '20px 0'
-    }}>
+    <div className="product-grid">
       {products.map((product) => (
         <div
           key={product.id}
           onClick={() => onProductClick(product)}
-          style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            cursor: 'pointer',
-            transition: 'transform 0.2s ease'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-          }}
+          className="product-card"
         >
-          <div style={{
-            width: '100%',
-            height: '150px',
-            backgroundColor: '#f0f0f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#999'
-          }}>
+          <div className="product-image">
             {product.image ? (
               <img 
                 src={product.image} 
                 alt={product.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                className="product-img"
               />
             ) : (
-              '商品图片'
+              <div className="product-placeholder">
+                <svg className="placeholder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                  <circle cx="8.5" cy="8.5" r="1.5"/>
+                  <polyline points="21,15 16,10 5,21"/>
+                </svg>
+                <span className="placeholder-text">商品图片</span>
+              </div>
             )}
           </div>
           
-          <div style={{ padding: '12px' }}>
-            <h3 style={{ 
-              fontSize: '14px', 
-              marginBottom: '8px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
-            }}>
+          <div className="product-info">
+            <h3 className="product-title">
               {product.title || '商品标题'}
             </h3>
             
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span style={{ 
-                color: '#ff6b35', 
-                fontWeight: 'bold',
-                fontSize: '16px'
-              }}>
+            <div className="product-details">
+              <span className="product-price">
                 ¥{product.price || 0}
               </span>
               
-              <span style={{ 
-                color: '#999', 
-                fontSize: '12px'
-              }}>
+              <span className="product-sales">
                 销量 {product.sales || 0}
               </span>
             </div>

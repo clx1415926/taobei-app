@@ -3,6 +3,7 @@ import { Routes, Route, useNavigate } from 'react-router-dom'
 import Homepage from './pages/Homepage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import PasswordSetupPage from './pages/PasswordSetupPage'
 import SearchResults from './pages/SearchResults'
 import { authApi } from './services/api'
 import { User } from './types'
@@ -46,13 +47,21 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <Routes>
-        <Route path="/" element={<Homepage isLoggedIn={isLoggedIn} userInfo={userInfo} onLogout={handleLogout} />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/register" element={<RegisterPage />} />
-        <Route path="/search" element={<SearchResults />} />
-      </Routes>
+    <div className="app">
+      <div className="app-background">
+        <div className="app-background-pattern"></div>
+        <div className="app-background-gradient"></div>
+      </div>
+      
+      <div className="app-content">
+        <Routes>
+          <Route path="/" element={<Homepage isLoggedIn={isLoggedIn} userInfo={userInfo} onLogout={handleLogout} />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/password-setup" element={<PasswordSetupPage />} />
+          <Route path="/search" element={<SearchResults />} />
+        </Routes>
+      </div>
     </div>
   )
 }

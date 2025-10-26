@@ -74,95 +74,85 @@ const SearchResults: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="search-results-page">
       <Header />
       
-      <main className="container" style={{ paddingTop: '20px' }}>
-        <SearchBar 
-          onSearch={handleSearch}
-          defaultValue={keyword}
-        />
-        
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          marginBottom: '20px',
-          padding: '10px 0',
-          borderBottom: '1px solid #eee'
-        }}>
-          <div style={{ color: '#666' }}>
-            {keyword && `搜索 "${keyword}" `}
-            {category && `分类筛选 `}
-            共找到 {searchResult.total} 个商品
+      <main className="search-results-main">
+        <div className="search-results-container">
+          <div className="search-section">
+            <SearchBar 
+              onSearch={handleSearch}
+              defaultValue={keyword}
+            />
           </div>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ color: '#666' }}>排序：</span>
-            <select 
-              value={sort}
-              onChange={(e) => handleSortChange(e.target.value)}
-              style={{
-                padding: '5px 10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px'
-              }}
-            >
-              <option value="relevance">相关度</option>
-              <option value="price_asc">价格从低到高</option>
-              <option value="price_desc">价格从高到低</option>
-              <option value="sales_desc">销量从高到低</option>
-            </select>
-          </div>
-        </div>
-        
-        {error && (
-          <ErrorMessage 
-            message={error} 
-            onRetry={searchProducts}
-            onClose={() => setError('')}
-          />
-        )}
-        
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '50px 0' }}>
-            <LoadingSpinner size="large" text="搜索中..." />
-          </div>
-        ) : (
-          <>
-            <ProductGrid 
-              products={searchResult.products}
-              onProductClick={handleProductClick}
-            />
+          <div className="search-results-header">
+            <div className="search-results-info">
+              <svg className="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <circle cx="11" cy="11" r="8"/>
+                <path d="m21 21-4.35-4.35"/>
+              </svg>
+              <span className="search-info-text">
+                {keyword && `搜索 "${keyword}" `}
+                {category && `分类筛选 `}
+                共找到 {searchResult.total} 个商品
+              </span>
+            </div>
             
-            {searchResult.totalPages > 1 && (
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center',
-                gap: '10px',
-                marginTop: '30px',
-                paddingBottom: '30px'
-              }}>
-                {Array.from({ length: searchResult.totalPages }, (_, i) => i + 1).map(pageNum => (
-                  <button
-                    key={pageNum}
-                    onClick={() => handlePageChange(pageNum)}
-                    style={{
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      backgroundColor: pageNum === page ? '#ff6b35' : 'white',
-                      color: pageNum === page ? 'white' : '#333',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {pageNum}
-                  </button>
-                ))}
+            <div className="search-sort-controls">
+              <span className="sort-label">排序：</span>
+              <select 
+                value={sort}
+                onChange={(e) => handleSortChange(e.target.value)}
+                className="sort-select"
+              >
+                <option value="relevance">相关度</option>
+                <option value="price_asc">价格从低到高</option>
+                <option value="price_desc">价格从高到低</option>
+                <option value="sales_desc">销量从高到低</option>
+              </select>
+            </div>
+          </div>
+          
+          {error && (
+            <div className="error-section">
+              <ErrorMessage 
+                message={error} 
+                onRetry={searchProducts}
+                onClose={() => setError('')}
+              />
+            </div>
+          )}
+          
+          {loading ? (
+            <div className="loading-container">
+              <LoadingSpinner size="large" text="搜索中..." />
+            </div>
+          ) : (
+            <>
+              <div className="products-section">
+                <ProductGrid 
+                  products={searchResult.products}
+                  onProductClick={handleProductClick}
+                />
               </div>
-            )}
-          </>
-        )}
+              
+              {searchResult.totalPages > 1 && (
+                <div className="pagination-section">
+                  {Array.from({ length: searchResult.totalPages }, (_, i) => i + 1).map(pageNum => (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      className={`pagination-btn ${pageNum === page ? 'active' : ''}`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </main>
     </div>
   );

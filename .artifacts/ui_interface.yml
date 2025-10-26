@@ -62,7 +62,7 @@
 
 - type: Frontend
   id: UI-LoginForm
-  description: 用户登录表单组件，处理用户登录流程
+  description: 用户登录表单组件，支持验证码和密码两种登录方式
   properties:
     - name: onLoginSuccess
       type: function
@@ -73,23 +73,32 @@
   state:
     - phoneNumber
     - verificationCode
+    - password
+    - loginMethod # "sms" 或 "password"
     - isLoading
     - countdown
     - error
     - canGetCode
+    - showPassword
   dependencies:
     - API-POST-SendVerificationCode
     - API-POST-Login
+    - API-POST-LoginPassword
   acceptanceCriteria:
-    - 包含手机号输入框、验证码输入框、获取验证码按钮、登录按钮
+    - 包含登录方式选择选项卡（验证码登录/密码登录）
+    - 验证码登录：手机号输入框、验证码输入框、获取验证码按钮、登录按钮
+    - 密码登录：手机号输入框、密码输入框、登录按钮、忘记密码链接
     - 手机号格式验证和自动格式化显示
     - 验证码获取倒计时功能（60秒）
+    - 密码输入框支持显示/隐藏切换
     - 表单验证和错误提示显示
     - 登录过程中显示加载状态
     - 支持键盘操作和无障碍访问
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"
+    - date: "2025-10-24"
+      description: "扩展支持密码登录方式"
 
 - type: Frontend
   id: UI-RegisterForm
@@ -279,6 +288,189 @@
     - 支持自动消失或手动关闭
     - 错误信息清晰易懂
     - 支持屏幕阅读器访问
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-PasswordSetupGuide
+  description: 密码设置引导弹窗组件
+  properties:
+    - name: visible
+      type: boolean
+      description: "弹窗显示状态"
+    - name: onSetupNow
+      type: function
+      description: "立即设置密码回调"
+    - name: onSetupLater
+      type: function
+      description: "稍后设置回调"
+    - name: onClose
+      type: function
+      description: "关闭弹窗回调"
+  state:
+    - none
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 显示密码设置引导信息
+    - 提供"立即设置"和"稍后设置"选项
+    - 支持ESC键关闭弹窗
+    - 友好的引导文案和视觉设计
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-PasswordSetupForm
+  description: 密码设置表单组件
+  properties:
+    - name: onSetupSuccess
+      type: function
+      description: "密码设置成功回调"
+    - name: onCancel
+      type: function
+      description: "取消设置回调"
+  state:
+    - password
+    - confirmPassword
+    - passwordStrength
+    - isLoading
+    - error
+    - showPassword
+    - showConfirmPassword
+  dependencies:
+    - API-POST-SetPassword
+  acceptanceCriteria:
+    - 包含密码输入框和确认密码输入框
+    - 密码强度实时显示（弱、中、强）
+    - 密码规则说明和改进建议
+    - 密码输入框支持显示/隐藏切换
+    - 两次密码输入一致性验证
+    - 设置过程中显示加载状态
+    - 表单验证和错误提示
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-ForgotPasswordForm
+  description: 忘记密码表单组件
+  properties:
+    - name: onResetSuccess
+      type: function
+      description: "密码重置成功回调"
+    - name: onBackToLogin
+      type: function
+      description: "返回登录页面回调"
+  state:
+    - phoneNumber
+    - verificationCode
+    - newPassword
+    - confirmPassword
+    - step # "verify" 或 "reset"
+    - isLoading
+    - countdown
+    - error
+    - canGetCode
+    - showPassword
+  dependencies:
+    - API-POST-SendVerificationCode
+    - API-POST-ResetPassword
+  acceptanceCriteria:
+    - 分步骤显示：身份验证 -> 设置新密码
+    - 身份验证步骤：手机号输入、验证码获取和验证
+    - 密码重置步骤：新密码设置和确认
+    - 验证码获取倒计时功能
+    - 密码强度验证和提示
+    - 支持返回登录页面
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-PasswordManagement
+  description: 密码管理组件（个人中心使用）
+  properties:
+    - name: userInfo
+      type: object
+      description: "用户信息对象"
+    - name: onPasswordChanged
+      type: function
+      description: "密码修改成功回调"
+  state:
+    - hasPassword
+    - passwordSetTime
+    - needPasswordUpdate
+    - showChangeForm
+    - currentPassword
+    - newPassword
+    - confirmPassword
+    - isLoading
+    - error
+  dependencies:
+    - API-GET-PasswordStatus
+    - API-PUT-ChangePassword
+    - API-POST-SetPassword
+  acceptanceCriteria:
+    - 显示密码设置状态和设置时间
+    - 未设置密码时显示设置入口
+    - 已设置密码时显示修改入口
+    - 密码修改表单包含当前密码和新密码输入
+    - 长期未修改密码时显示安全提醒
+    - 密码强度验证和历史重复检查
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-PasswordStrengthIndicator
+  description: 密码强度指示器组件
+  properties:
+    - name: password
+      type: string
+      description: "当前密码值"
+    - name: showSuggestions
+      type: boolean
+      description: "是否显示改进建议"
+  state:
+    - strength # "weak", "medium", "strong"
+    - suggestions
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 实时分析密码强度
+    - 显示强度等级（弱、中、强）
+    - 使用颜色区分强度等级（红、橙、绿）
+    - 提供具体的密码改进建议
+    - 支持密码规则说明显示
+  changeLog:
+    - date: "2025-10-24"
+      description: "初始创建"
+
+- type: Frontend
+  id: UI-LoginMethodSwitch
+  description: 登录方式切换组件
+  properties:
+    - name: currentMethod
+      type: string
+      description: "当前登录方式：sms 或 password"
+    - name: onMethodChange
+      type: function
+      description: "登录方式切换回调"
+    - name: hasPassword
+      type: boolean
+      description: "用户是否已设置密码"
+  state:
+    - none
+  dependencies:
+    - none
+  acceptanceCriteria:
+    - 显示验证码登录和密码登录选项卡
+    - 支持点击切换登录方式
+    - 未设置密码时禁用密码登录选项
+    - 当前选中方式有视觉高亮
+    - 提供设置密码的引导链接
   changeLog:
     - date: "2025-10-24"
       description: "初始创建"

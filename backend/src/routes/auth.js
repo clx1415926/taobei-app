@@ -1,6 +1,7 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
-const AuthService = require('../services/authService');
+const AuthService = require('../services/AuthService');
+const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
 
 // 使用单例模式确保所有请求使用同一个AuthService实例
@@ -15,7 +16,7 @@ const getAuthService = () => {
 // API-POST-SendVerificationCode
 router.post('/send-verification-code', [
   body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
-  body('type').isIn(['login', 'register']).withMessage('类型参数无效')
+  body('type').isIn(['login', 'register', 'reset']).withMessage('类型参数无效')
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -61,8 +62,18 @@ router.post('/login', [
     const ipAddress = req.ip || req.connection.remoteAddress;
     console.log('Login request:', { phoneNumber, verificationCode: verificationCode ? '***' : 'missing', ipAddress });
     const result = await getAuthService().login(phoneNumber, verificationCode, ipAddress);
-    console.log('Login success:', { userId: result.userId, message: result.message });
-    res.json(result);
+    
+    // 格式化返回结果以符合API规范
+    const response = {
+      success: result.success,
+      message: result.message,
+      userId: result.user?.id,
+      token: result.token,
+      redirectUrl: '/'
+    };
+    
+    console.log('Login success:', { userId: response.userId, message: response.message });
+    res.json(response);
   } catch (error) {
     console.error('Login error:', error.message);
     if (error.message.includes('该手机号未注册')) {
@@ -135,6 +146,150 @@ router.post('/logout', async (req, res) => {
     if (error.message.includes('无效的token') || error.message.includes('token已过期')) {
       return res.status(401).json({ error: '未授权访问' });
     }
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// API-POST-SetPassword
+router.post('/set-password', [
+  body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('password').isLength({ min: 8 }).withMessage('密码长度至少8位'),
+  body('confirmPassword').custom((value, { req }) => {
+    if (value !== req.body.password) {
+      throw new Error('两次输入的密码不一致');
+    }
+    return true;
+  })
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
+
+  try {
+    const { phoneNumber, password, confirmPassword } = req.body;
+    const authService = getAuthService();
+    
+    const result = await authService.setPassword(phoneNumber, password, confirmPassword);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// API-POST-LoginPassword
+router.post('/login-password', [
+  body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('password').notEmpty().withMessage('请输入密码')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
+
+  try {
+    const { phoneNumber, password } = req.body;
+    const ipAddress = req.ip || req.connection.remoteAddress;
+    const authService = getAuthService();
+    
+    const result = await authService.loginWithPassword(phoneNumber, password, ipAddress);
+    res.json(result);
+  } catch (error) {
+    // 根据错误类型返回不同的状态码
+    if (error.message.includes('密码错误') || error.message.includes('该手机号未注册') || error.message.includes('该账户未设置密码')) {
+      return res.status(401).json({ error: error.message });
+    }
+    if (error.message.includes('账户已被锁定')) {
+      return res.status(423).json({ error: error.message });
+    }
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// API-POST-VerifyResetCode
+router.post('/verify-reset-code', [
+  body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('verificationCode').isLength({ min: 6, max: 6 }).withMessage('验证码格式错误')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
+
+  try {
+    const { phoneNumber, verificationCode } = req.body;
+    const authService = getAuthService();
+    
+    const result = await authService.verifyResetCode(phoneNumber, verificationCode);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// API-POST-ResetPassword
+router.post('/reset-password', [
+  body('phoneNumber').isMobilePhone('zh-CN').withMessage('请输入正确的手机号码'),
+  body('verificationCode').isLength({ min: 6, max: 6 }).withMessage('验证码格式错误'),
+  body('newPassword').isLength({ min: 8 }).withMessage('密码长度至少8位'),
+  body('confirmPassword').custom((value, { req }) => {
+    if (value !== req.body.newPassword) {
+      throw new Error('两次输入的密码不一致');
+    }
+    return true;
+  })
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
+
+  try {
+    const { phoneNumber, verificationCode, newPassword, confirmPassword } = req.body;
+    const authService = getAuthService();
+    
+    const result = await authService.resetPassword(phoneNumber, verificationCode, newPassword, confirmPassword);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// API-PUT-ChangePassword
+router.put('/change-password', authenticateToken, [
+  body('currentPassword').notEmpty().withMessage('请输入当前密码'),
+  body('newPassword').isLength({ min: 8 }).withMessage('新密码长度至少8位'),
+  body('confirmPassword').custom((value, { req }) => {
+    if (value !== req.body.newPassword) {
+      throw new Error('两次输入的密码不一致');
+    }
+    return true;
+  })
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ error: errors.array()[0].msg });
+  }
+
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    const authService = getAuthService();
+    
+    const result = await authService.changePassword(req.user.userId, currentPassword, newPassword, confirmPassword);
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// API-GET-PasswordStatus
+// API-GET-PasswordStatus
+router.get('/password-status', authenticateToken, async (req, res) => {
+  try {
+    const authService = getAuthService();
+    const result = authService.getPasswordStatus(req.user.phoneNumber);
+    res.json(result);
+  } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
